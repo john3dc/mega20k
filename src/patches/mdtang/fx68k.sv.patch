@@ -1,0 +1,57 @@
+--- a/fx68k.sv
++++ b/fx68k.sv
+@@ -41,7 +41,7 @@
+ 
+ 
+ // Clocks, phases and resets
+-typedef struct {
++typedef struct packed {
+ 	logic clk;
+ 	logic extReset;			// External sync reset on emulated system
+ 	logic pwrUp;			// Asserted together with reset on emulated system coldstart
+@@ -49,7 +49,7 @@
+ } s_clks;
+ 
+ // IRD decoded signals
+-typedef struct {
++typedef struct packed {
+ 	logic isPcRel;
+ 	logic isTas;
+ 	logic implicitSp;
+@@ -66,7 +66,7 @@
+ } s_irdecod;
+ 
+ // Nano code decoded signals
+-typedef struct {
++typedef struct packed {
+ 	logic permStart;
+ 	logic waitBusFinish;
+ 	logic isWrite;
+@@ -1196,8 +1196,8 @@
+ 	
+ 	initial begin
+ 		for( int i = 0; i < 18; i++) begin
+-			regs68L[i] <= '0;
+-			regs68H[i] <= '0;
++			regs68L[i] = '0;
++			regs68H[i] = '0;
+ 		end
+ 	end
+ 	
+@@ -2488,13 +2488,15 @@
+ 
+ 
+ module nanoRom( input clk, input [NADDR_WIDTH-1:0] nanoAddr, output logic [NANO_WIDTH-1:0] nanoOutput);
++	reg [NADDR_WIDTH-1:0] nanoAddr_hold;
++	always @(negedge clk) nanoAddr_hold <= nanoAddr;
+ 	reg [NANO_WIDTH-1:0] nRam[ NANO_DEPTH];		
+ 	initial begin
+ 		$readmemb("nanorom.mem", nRam);
+ 	end
+ 	
+ 	always_ff @( posedge clk) 
+-		nanoOutput <= nRam[ nanoAddr];
++		nanoOutput <= nRam[ nanoAddr_hold];
+ endmodule
+ 
+ // Translate uaddr to nanoaddr

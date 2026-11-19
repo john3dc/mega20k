@@ -1,0 +1,65 @@
+--- a/system.sv
++++ b/system.sv
+@@ -332,7 +332,7 @@
+ 	.BGACKn(M68K_BGACK_N),
+ 	.HALTn(1),
+ 
+-	.DTACKn(M68K_MBUS_DTACK_N),
++	.DTACKn(M68K_MBUS_DTACK_N && !cpu_memory_read_ready),
+ 	.VPAn(~M68K_INTACK),
+ 	.BERRn(1),
+ 	.IPL0n(M68K_IPL_N[0]),
+@@ -353,7 +353,7 @@
+ 
+ wire [15:0] genie_data;
+ // nand2mario: skip game genie for now
+-assign genie_data = M68K_MBUS_D;
++assign genie_data = cpu_memory_read_ready ? MEM_DATA : M68K_MBUS_D;
+ 
+ // CODES #(.ADDR_WIDTH(24), .DATA_WIDTH(16), .BIG_ENDIAN(1)) codes
+ // (
+@@ -869,6 +869,18 @@
+ 			MBUS_FINISH       = 14,
+ 			MBUS_Z80_PREREAD  = 15,
+ 			MBUS_WAIT_FOR_S4  = 16;
++
++// A completed plain memory read can reach the CPU immediately. The old
++// READ -> FINISH pipeline otherwise misses the next DTACK sampling edge
++// even though MEM_DATA is already stable. Hold the same data/ack in the
++// existing registers on the following edge; writes and device waits retain
++// their old handshake. No speculative acknowledgement of an SDRAM request.
++wire cpu_memory_read_ready = !reset && !M68K_AS_N && !M68K_INTACK &&
++    msrc == MSRC_M68K && MBUS_RNW &&
++    (MBUS_A[23:20] < 4'ha || &MBUS_A[23:21]) &&
++    (mstate == MBUS_ROM_READ || mstate == MBUS_RAM_READ || mstate == MBUS_SRAM_READ) &&
++    MEM_REQ == MEM_ACK;
++
+ 
+ 				
+ always @(posedge MCLK) begin
+@@ -907,6 +919,10 @@
+ 			if (cycle_cnt) cycle_cnt <= cycle_cnt - 1'd1;
+ 		end
+ 
++        if (cpu_memory_read_ready) begin
++            M68K_MBUS_D <= MEM_DATA;
++            M68K_MBUS_DTACK_N <= 0;
++        end
+ 		if (M68K_AS_N) M68K_MBUS_DTACK_N <= 1;
+ 		if (~Z80_IO)   Z80_MBUS_DTACK_N  <= 1;
+ 		if (~VBUS_SEL) VDP_MBUS_DTACK_N  <= 1;
+@@ -931,7 +947,13 @@
+ 					data <= NO_DATA;
+ 					MBUS_DO <= M68K_DO;
+ 					MBUS_RNW <= M68K_RNW;
+-					mstate <= MBUS_WAIT_FOR_S4; 
++                    // Read strobes are valid with AS; only writes need the
++                    // later S4 byte-strobe phase. Keep I/O, VDP and interrupt
++                    // acknowledge on the existing path.
++                    if (M68K_RNW && !M68K_INTACK &&
++                        (M68K_A[23:20] < 4'ha || &M68K_A[23:21]))
++                        mstate <= MBUS_SELECT;
++                    else mstate <= MBUS_WAIT_FOR_S4;
+ 				end
+ 				else if (VBUS_SEL && VDP_MBUS_DTACK_N) begin
+ 					msrc <= MSRC_VDP;

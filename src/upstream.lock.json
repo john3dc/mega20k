@@ -1,0 +1,15 @@
+{
+  "mdtang": {
+    "url": "https://github.com/nand2mario/mdtang.git",
+    "commit": "903d30cbd92cf03bc31cd55f925d8985e3225f1e"
+  },
+  "fpgagen": {
+    "url": "https://github.com/mist-devel/fpgagen.git",
+    "commit": "a51ca7d02644845b039488800d48d64ae9aa353a",
+    "files": {
+      "src/DualPortRAM.vhd": "8acd1028929632d0a19f65bd2ba87b40aef539de76cd56a6c19647255a6a616d",
+      "src/vdp.vhd": "f50b31eefdf091a6e504e4a534760f99c544ba7e944dd71f829bce3721dc7528",
+      "src/vdp_common.vhd": "ef6adbb2c3fa281e7a7ce696fb9fea430463aa82d8f53ccf1877baaf9685e268"
+    }
+  }
+}

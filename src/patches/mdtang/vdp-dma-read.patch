@@ -1,0 +1,36 @@
+--- a/system.sv
++++ b/system.sv
+@@ -493,9 +493,9 @@
+ 	.VINT_T80(Z80_VINT),
+ 
+ 	.VBUS_ADDR(VBUS_A),
+-	.VBUS_DATA(VDP_MBUS_D),
++	.VBUS_DATA(dma_memory_ready ? MEM_DATA : VDP_MBUS_D),
+ 	.VBUS_SEL(VBUS_SEL),
+-	.VBUS_DTACK_N(VDP_MBUS_DTACK_N),
++	.VBUS_DTACK_N(VDP_MBUS_DTACK_N && !dma_memory_ready),
+ 
+ 	.BG_N(M68K_BG_N),
+ 	.BR_N_I(Z80_BR_N), .BR_N_O(VBUS_BR_N),
+@@ -869,6 +869,10 @@
+ wire cpu_memory_read_ready = !reset && !M68K_AS_N && !M68K_INTACK &&
+     msrc == MSRC_M68K && MBUS_RNW &&
+     (MBUS_A[23:20] < 4'ha || &MBUS_A[23:21]) &&
++    (mstate == MBUS_ROM_READ || mstate == MBUS_RAM_READ || mstate == MBUS_SRAM_READ) &&
++    MEM_REQ == MEM_ACK;
++// The DMA reader samples completed memory on its own scheduled VDP slots.
++wire dma_memory_ready = !reset && VBUS_SEL && msrc == MSRC_VDP &&
+     (mstate == MBUS_ROM_READ || mstate == MBUS_RAM_READ || mstate == MBUS_SRAM_READ) &&
+     MEM_REQ == MEM_ACK;
+ // Present acknowledged VDP data in the same CPU sampling phase. The
+@@ -922,6 +926,10 @@
+ 			if (cycle_cnt) cycle_cnt <= cycle_cnt - 1'd1;
+ 		end
+ 
++        if (dma_memory_ready) begin
++            VDP_MBUS_D <= MEM_DATA;
++            VDP_MBUS_DTACK_N <= 0;
++        end
+         if (cpu_vdp_ready) begin
+             M68K_MBUS_D <= cpu_vdp_data;
+             M68K_MBUS_DTACK_N <= 0;

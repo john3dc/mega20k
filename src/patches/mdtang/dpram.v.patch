@@ -1,0 +1,11 @@
+--- a/dpram.v
++++ b/dpram.v
+@@ -20,7 +20,7 @@
+     // initialize RAM, with zeros if ZERO or file if FILE.
+     integer i;
+ 
+-    reg [DATW-1:0] mem [0:MEMD-1]; // memory array
++    (* no_rw_check *) reg [DATW-1:0] mem [0:MEMD-1]; // memory array
+     initial
+         if (FILE != "") $readmemh(FILE, mem);
+ 

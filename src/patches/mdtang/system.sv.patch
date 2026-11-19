@@ -1,0 +1,164 @@
+--- a/system.sv
++++ b/system.sv
+@@ -55,6 +55,9 @@
+ 	output [15:0] DAC_RDATA,
+ 
+ 	input         LOADING,
++	input LOADER_MODE, BOOT_COPY,
++	input [13:0] BOOT_ADDR,
++	output [31:0] BOOT_DATA,
+ 	input         PAL,
+ 	input         EXPORT,
+ 	input         FAST_FIFO,
+@@ -208,8 +211,8 @@
+ reg  M68K_CLKENp, M68K_CLKENn;
+ reg  Z80_CLKENp, Z80_CLKENn, PSG_CLKEN;
+ reg  FM_CLKEN;
+-reg clk_z80_cycle;			// 0: CLK_Z80 is high (first half), 1: low (second half)
+-always @(posedge MCLK) if (CLK_Z80) clk_z80_cycle <= 1;
++wire clk_z80_cycle;			// 0: CLK_Z80 is high (first half), 1: low (second half)
++assign clk_z80_cycle = 1;
+ reg pause_reg;				// PAUSE_EN registered on whole m68k cycle
+ 
+ always @(posedge MCLK) begin
+@@ -221,6 +224,7 @@
+ 	reg [3:0] VCLKMID;
+ 
+ 	if(~RESET_N /*| LOADING*/) begin
++		ZCLKCNT <= 0;
+ 		VCLKCNT <= 0;
+ 		PCLKCNT <= 0;
+ 		FCLKCNT <= 0;
+@@ -238,7 +242,7 @@
+ 		if (ZCLKCNT == 14)
+ 			ZCLKCNT <= 0;
+ 		if (clk_z80_cycle) 				// make sure Z80_CLKENn is 2 MCLK wide and aligned with CLK_Z80
+-			if (ZCLKCNT == 13 | ZCLKCNT == 14) 
++			if (ZCLKCNT == 14) 
+ 				Z80_CLKENn <= 1; // ~PAUSE_EN;
+ 			else
+ 				Z80_CLKENn <= 0;
+@@ -394,55 +398,61 @@
+ wire [15:1] vram32_a;
+ wire [31:0] vram32_q;
+ 
+-dpram #(14) vram_l1
++assign BOOT_DATA = vram32_q;
++
++dpram #(14,8,"boot_l1.hex") vram_l1
+ (
+ 	.clock(MCLK),
+-	.address_a(vram_a[15:2]),
+-	.data_a(vram_d[7:0]),
+-	.wren_a(vram_we_l & (vram_ack ^ vram_req) & ~vram_a[1]),
++	.address_a(LOADING ? ram_rst_a[14:1] : vram_a[15:2]),
++	.data_a(LOADING ? 8'b0 : vram_d[7:0]),
++	.wren_a(!BOOT_COPY & (LOADING | (vram_we_l & (vram_ack ^ vram_req) & ~vram_a[1]))),
+ 	.q_a(vram_q1[7:0]),
+ 
+-	.address_b(LOADING ? ram_rst_a[14:1] : vram32_a[15:2]),
+-	.wren_b(LOADING),
++	.address_b(BOOT_COPY ? BOOT_ADDR : vram32_a[15:2]),
++	.wren_b(1'b0),
++	.data_b(8'b0),
+ 	.q_b(vram32_q[7:0])
+ );
+ 
+-dpram #(14) vram_u1
++dpram #(14,8,"boot_u1.hex") vram_u1
+ (
+ 	.clock(MCLK),
+-	.address_a(vram_a[15:2]),
+-	.data_a(vram_d[15:8]),
+-	.wren_a(vram_we_u & (vram_ack ^ vram_req) & ~vram_a[1]),
++	.address_a(LOADING ? ram_rst_a[14:1] : vram_a[15:2]),
++	.data_a(LOADING ? 8'b0 : vram_d[15:8]),
++	.wren_a(!BOOT_COPY & (LOADING | (vram_we_u & (vram_ack ^ vram_req) & ~vram_a[1]))),
+ 	.q_a(vram_q1[15:8]),
+ 
+-	.address_b(LOADING ? ram_rst_a[14:1] : vram32_a[15:2]),
+-	.wren_b(LOADING),
++	.address_b(BOOT_COPY ? BOOT_ADDR : vram32_a[15:2]),
++	.wren_b(1'b0),
++	.data_b(8'b0),
+ 	.q_b(vram32_q[15:8])
+ );
+ 
+-dpram #(14) vram_l2
++dpram #(14,8,"boot_l2.hex") vram_l2
+ (
+ 	.clock(MCLK),
+-	.address_a(vram_a[15:2]),
+-	.data_a(vram_d[7:0]),
+-	.wren_a(vram_we_l & (vram_ack ^ vram_req) & vram_a[1]),
++	.address_a(LOADING ? ram_rst_a[14:1] : vram_a[15:2]),
++	.data_a(LOADING ? 8'b0 : vram_d[7:0]),
++	.wren_a(!BOOT_COPY & (LOADING | (vram_we_l & (vram_ack ^ vram_req) & vram_a[1]))),
+ 	.q_a(vram_q2[7:0]),
+ 
+-	.address_b(LOADING ? ram_rst_a[14:1] : vram32_a[15:2]),
+-	.wren_b(LOADING),
++	.address_b(BOOT_COPY ? BOOT_ADDR : vram32_a[15:2]),
++	.wren_b(1'b0),
++	.data_b(8'b0),
+ 	.q_b(vram32_q[23:16])
+ );
+ 
+-dpram #(14) vram_u2
++dpram #(14,8,"boot_u2.hex") vram_u2
+ (
+ 	.clock(MCLK),
+-	.address_a(vram_a[15:2]),
+-	.data_a(vram_d[15:8]),
+-	.wren_a(vram_we_u & (vram_ack ^ vram_req) & vram_a[1]),
++	.address_a(LOADING ? ram_rst_a[14:1] : vram_a[15:2]),
++	.data_a(LOADING ? 8'b0 : vram_d[15:8]),
++	.wren_a(!BOOT_COPY & (LOADING | (vram_we_u & (vram_ack ^ vram_req) & vram_a[1]))),
+ 	.q_a(vram_q2[15:8]),
+ 
+-	.address_b(LOADING ? ram_rst_a[14:1] : vram32_a[15:2]),
+-	.wren_b(LOADING),
++	.address_b(BOOT_COPY ? BOOT_ADDR : vram32_a[15:2]),
++	.wren_b(1'b0),
++	.data_b(8'b0),
+ 	.q_b(vram32_q[31:24])
+ );
+ 
+@@ -503,7 +513,7 @@
+ 	.BR_N(VBUS_BR_N),
+ 	.BGACK_N(VBUS_BGACK_N),
+ 
+-	.VRAM_SPEED(~(FAST_FIFO|TURBO!=0)),
++	.VRAM_SPEED(~FAST_FIFO), // CPU boost preserves the console FIFO timing.
+ 	.VSCROLL_BUG(0),
+ 	.BORDER_EN(BORDER),
+ 	.CRAM_DOTS(CRAM_DOTS),
+@@ -880,6 +890,7 @@
+ 	reg [1:0] cycle_cnt;
+ 
+ 	if (reset) begin
++		MEM_REQ <= MEM_ACK; MEM_WE <= 0; MEM_ADDR <= 0;
+ 		M68K_MBUS_DTACK_N <= 1;
+ 		Z80_MBUS_DTACK_N  <= 1;
+ 		VDP_MBUS_DTACK_N  <= 1;
+@@ -974,6 +985,12 @@
+ 				//NO DEVICE (usually lockup on real HW)
+ 				mstate <= MBUS_FINISH;
+ 
++                if (LOADER_MODE && (MBUS_A[23:8]==16'ha140 || MBUS_A[23:22]==2'b01 || MBUS_A[23:20]==4'h8)) begin
++                    MEM_ADDR <= {MBUS_A[23:22]!=2'b01, MBUS_A};
++                    MEM_REQ <= ~MEM_ACK; MEM_WE <= ~MBUS_RNW;
++                    MBUS_UDS_N <= M68K_UDS_N; MBUS_LDS_N <= M68K_LDS_N;
++                    mstate <= MBUS_RAM_READ;
++                end else
+ 				if (MBUS_A[23:20]<'hA || (msrc == MSRC_Z80 && MBUS_A[23:20]<'hE && ROMSZ[24:20]>='hA)) begin
+ 					//ROM: 000000-9FFFFF (A00000-DFFFFF)
+ 					if (BANK_SRAM && MBUS_A[23:21] == 1) begin
+@@ -1403,6 +1420,7 @@
+ wire  [7:0] ZRAM_DO;
+ dpram #(13) ramZ80
+ (
++	.wren_b(1'b0), .address_b(13'b0), .data_b(8'b0),
+ 	.clock(MCLK),
+ 	.address_a(ZBUS_A[12:0]),
+ 	.data_a(ZBUS_DO),

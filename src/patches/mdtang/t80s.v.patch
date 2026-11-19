@@ -1,0 +1,11 @@
+--- a/t80s.v
++++ b/t80s.v
+@@ -105,7 +105,7 @@
+       .INT_n(INT_n), .NMI_n(NMI_n), .RESET_n(RESET_n), .BUSRQ_n(BUSRQ_n), 
+       .BUSAK_n(BUSAK_n), .CLK_n(CLK), .A(A), .DInst(DI), 
+       .DI(DI_Reg), .DO(DO), .MC(MCycle), .TS(TState), .out0(OUT0), 
+-      .IntCycle_n(IntCycle_n)
++      .IntCycle_n(IntCycle_n), .DIRSet(1'b0), .DIR(212'b0)
+    );
+       
+    always @(posedge CLK)

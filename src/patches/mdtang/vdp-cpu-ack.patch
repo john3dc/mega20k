@@ -1,0 +1,53 @@
+--- a/system.sv
++++ b/system.sv
+@@ -321,7 +321,7 @@
+ 	.BGACKn(M68K_BGACK_N),
+ 	.HALTn(1),
+ 
+-	.DTACKn(M68K_MBUS_DTACK_N && !cpu_memory_read_ready && !cpu_wram_write_ready),
++	.DTACKn(M68K_MBUS_DTACK_N && !cpu_memory_read_ready && !cpu_wram_write_ready && !cpu_vdp_ready),
+ 	.VPAn(~M68K_INTACK),
+ 	.BERRn(1),
+ 	.IPL0n(M68K_IPL_N[0]),
+@@ -342,7 +342,7 @@
+ 
+ wire [15:0] genie_data;
+ // nand2mario: skip game genie for now
+-assign genie_data = cpu_memory_read_ready ? MEM_DATA : M68K_MBUS_D;
++assign genie_data = cpu_memory_read_ready ? MEM_DATA : cpu_vdp_ready ? cpu_vdp_data : M68K_MBUS_D;
+ 
+ // CODES #(.ADDR_WIDTH(24), .DATA_WIDTH(16), .BIG_ENDIAN(1)) codes
+ // (
+@@ -871,6 +871,11 @@
+     (MBUS_A[23:20] < 4'ha || &MBUS_A[23:21]) &&
+     (mstate == MBUS_ROM_READ || mstate == MBUS_RAM_READ || mstate == MBUS_SRAM_READ) &&
+     MEM_REQ == MEM_ACK;
++// Present acknowledged VDP data in the same CPU sampling phase. The
++// VDP itself holds DTACK high during FIFO waits and incomplete reads.
++wire cpu_vdp_ready = !reset && !M68K_AS_N && msrc == MSRC_M68K &&
++    mstate == MBUS_VDP_READ && VDP_SEL && !MBUS_A[4] && !VDP_DTACK_N;
++wire [15:0] cpu_vdp_data = MBUS_A[4:2] == 1 ? {NO_DATA[15:10], VDP_DO[9:0]} : VDP_DO;
+ // Work RAM may acknowledge as soon as the player owns the complete write.
+ // CPU byte strobes have been sampled in SELECT after the S4 write phase.
+ wire cpu_wram_write_ready = !reset && !M68K_AS_N && !MBUS_RNW &&
+@@ -917,6 +922,10 @@
+ 			if (cycle_cnt) cycle_cnt <= cycle_cnt - 1'd1;
+ 		end
+ 
++        if (cpu_vdp_ready) begin
++            M68K_MBUS_D <= cpu_vdp_data;
++            M68K_MBUS_DTACK_N <= 0;
++        end
+         if (cpu_wram_write_ready) M68K_MBUS_DTACK_N <= 0;
+         if (cpu_memory_read_ready) begin
+             M68K_MBUS_D <= MEM_DATA;
+@@ -950,7 +959,8 @@
+                     // later S4 byte-strobe phase. Keep I/O, VDP and interrupt
+                     // acknowledge on the existing path.
+                     if (M68K_RNW && !M68K_INTACK &&
+-                        (M68K_A[23:20] < 4'ha || &M68K_A[23:21]))
++                        (M68K_A[23:20] < 4'ha || &M68K_A[23:21] ||
++                         (M68K_A[23:21] == 3'b110 && !M68K_A[18:16] && !M68K_A[7:4])))
+                         mstate <= MBUS_SELECT;
+                     else mstate <= MBUS_WAIT_FOR_S4;
+ 				end

@@ -1,0 +1,167 @@
+Mega Drive for the Tang Nano 20K — Third-party notices
+
+This release includes the Tang Nano 20K adaptations dated November 19, 2026.
+The local patches, RTL, menu firmware and build scripts are in src/.
+Project-specific code is licensed under GPL-3.0-or-later. The following
+notices also apply to the distributed FPGA bitstreams.
+
+MDTang by nand2mario is based on Genesis_MiSTer and fpgagen. The MDTang
+repository includes the GPLv3 license. Individual files carry the terms
+reproduced below. Upstream projects and pinned revisions follow.
+https://github.com/nand2mario/mdtang/tree/903d30cbd92cf03bc31cd55f925d8985e3225f1e
+https://github.com/MiSTer-devel/Genesis_MiSTer
+https://github.com/mist-devel/fpgagen/tree/a51ca7d02644845b039488800d48d64ae9aa353a
+https://github.com/Torlus/fpgagen
+
+FX68K (68000) is copyright (c) 2018 Jorge Cwik and is licensed under GPLv3.
+https://github.com/ijor/fx68k
+
+JT12 (FM) and JT89 (PSG) by José Tejada Gómez and contributors are licensed
+under GPL-3.0-or-later as stated in the source files.
+https://github.com/jotego/jt12
+https://github.com/jotego/jt89
+
+Daniel Hepper's font8x8 is based on the public-domain IBM VGA font and work
+by Marcel Sondaar. The original header identifies the font as public domain.
+https://github.com/dhepper/font8x8
+
+The menu firmware includes GCC runtime routines by the Free Software
+Foundation and contributors under GPLv3 with the GCC Runtime Library
+Exception 3.1. See src/licenses/GCC-runtime-exception.txt for the full exception.
+https://gcc.gnu.org/onlinedocs/libstdc++/manual/license.html
+
+fpgagen, MDTang and T80
+-----------------------
+
+vdp.vhd, vdp_common.vhd, fourway.v, gen_io.sv, multitap.sv, teamplayer.sv, system.sv, t80.v, t80_alu.v, t80_mcode.v, t80_reg.v, t80s.v
+
+Copyright (c) 2010 Gregory Estrade (greg@torlus.com)
+Copyright (c) 2018 Till Harbaum
+Copyright (c) 2018-2019 Alexey Melnikov
+Copyright (c) 2018-2021 György Szombathelyi
+Copyright (c) 2019 Sorgelig
+Copyright (c) 2018 Sorgelig
+Copyright (c) 2001-2002 Daniel Wallner (jesus@opencores.org)
+Copyright (c) 2002 Daniel Wallner (jesus@opencores.org)
+All rights reserved
+
+Redistribution and use in source and synthezised forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+Redistributions of source code must retain the above copyright notice,
+this list of conditions and the following disclaimer.
+
+Redistributions in synthesized form must reproduce the above copyright
+notice, this list of conditions and the following disclaimer in the
+documentation and/or other materials provided with the distribution.
+
+Neither the name of the author nor the names of other contributors may
+be used to endorse or promote products derived from this software without
+specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+
+HDMI — hdl-util, Sameer Puri
+----------------------------
+
+https://github.com/hdl-util/hdmi
+This project uses the MIT option of the upstream MIT or Apache-2.0 license.
+
+MIT License
+
+Copyright (c) 2019 Sameer Puri
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Audio filters — genesis_lpf and audio_iir_filter
+------------------------------------------------
+
+MIT License
+
+Copyright (c) 2019 Gregory Hogan (Soltan_G42)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+FatFs R0.15 with patch 1 — ChaN
+-------------------------------
+
+https://elm-chan.org/fsw/ff/
+
+Copyright (C) 2022, ChaN, all right reserved.
+
+FatFs module is an open source software. Redistribution and use of FatFs in
+source and binary forms, with or without modification, are permitted provided
+that the following condition is met:
+
+1. Redistributions of source code must retain the above copyright notice,
+   this condition and the following disclaimer.
+
+This software is provided by the copyright holder and contributors "AS IS"
+and any warranties related to this software are DISCLAIMED.
+The copyright owner or contributors be NOT LIABLE for any damages caused
+by use of this software.
+
+Apycula — FPGA bitstream packer adaptations
+-------------------------------------------
+
+Copyright (c) 2019 Pepijn de Vos
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

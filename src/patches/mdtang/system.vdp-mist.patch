@@ -1,0 +1,79 @@
+--- a/system.sv
++++ b/system.sv
+@@ -290,24 +290,9 @@
+ //--------------------------------------------------------------
+ // CPU 68000
+ //--------------------------------------------------------------
+-reg   [2:0] M68K_IPL_N;
+-always @(posedge MCLK) begin
+-	reg       old_as;
+-	reg [1:0] scnt;
+-	
+-	if(reset) M68K_IPL_N <= 3'b111;
+-	else if (M68K_CLKEN) begin
+-		old_as <= M68K_AS_N;
+-		scnt <= scnt + 1'd1;
+-		if(~M68K_AS_N) scnt <= 0;
+-		if((~old_as & M68K_AS_N) || &scnt) begin
+-			if (M68K_VINT) M68K_IPL_N <= 3'b001;
+-			else if (M68K_HINT) M68K_IPL_N <= 3'b011;
+-			else if (M68K_EXINT) M68K_IPL_N <= 3'b101;
+-			else M68K_IPL_N <= 3'b111;
+-		end
+-	end
+-end
++// fpgagen synchronizes its interrupt outputs at PHI1 with AS released.
++wire [2:0] M68K_IPL_N = M68K_VINT ? 3'b001 : M68K_HINT ? 3'b011 :
++                        M68K_EXINT ? 3'b101 : 3'b111;
+ 
+ wire M68K_INTACK = &M68K_FC;
+ 
+@@ -468,11 +453,14 @@
+ 
+ wire HL;
+ 
++assign TRANSP_DETECT = 1'b0;
++
+ vdp vdp
+ (
+ 	.RST_N(~hard_reset),
+ 	.CLK(MCLK),
+-	.CE(~pause_reg),
++	.PHI1(M68K_CLKENp),
++	.AS_N(M68K_AS_N),
+ 
+ 	.SEL(VDP_SEL),
+ 	.A({MBUS_A[4:1], 1'b0}),
+@@ -510,15 +498,13 @@
+ 	.VBUS_DTACK_N(VDP_MBUS_DTACK_N),
+ 
+ 	.BG_N(M68K_BG_N),
+-	.BR_N(VBUS_BR_N),
+-	.BGACK_N(VBUS_BGACK_N),
++	.BR_N_I(Z80_BR_N), .BR_N_O(VBUS_BR_N),
++	.BGACK_N_I(Z80_BGACK_N), .BGACK_N_O(VBUS_BGACK_N),
+ 
+ 	.VRAM_SPEED(~FAST_FIFO), // CPU boost preserves the console FIFO timing.
+-	.VSCROLL_BUG(0),
++	.VSCROLL_BUG(1'b1),
+ 	.BORDER_EN(BORDER),
+ 	.CRAM_DOTS(CRAM_DOTS),
+-	.SVP_QUIRK(SVP_QUIRK),
+-	.OBJ_LIMIT_HIGH_EN(OBJ_LIMIT_HIGH),
+ 
+ 	.FIELD_OUT(FIELD),
+ 	.INTERLACE(INTERLACE),
+@@ -533,12 +519,7 @@
+ 	.CE_PIX(CE_PIX),
+ 	.HBL(HBL),
+ 	.VBL(VBL),
+-
+-	.TRANSP_DETECT(TRANSP_DETECT),
+-	
+-	.BGA_EN(BGA_EN),
+-	.BGB_EN(BGB_EN),
+-	.SPR_EN(SPR_EN)
++	.IN_BORDER()
+ );
+ 
+ // PSG 0x10-0x17 in VDP space

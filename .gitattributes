@@ -1,0 +1,5 @@
+* text=auto eol=lf
+*.fs binary
+*.bin binary
+# The build verifies the original upstream bytes, including line endings.
+src/upstream/** -text

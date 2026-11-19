@@ -1,0 +1,32 @@
+--- a/system.sv
++++ b/system.sv
+@@ -321,7 +321,7 @@
+ 	.BGACKn(M68K_BGACK_N),
+ 	.HALTn(1),
+ 
+-	.DTACKn(M68K_MBUS_DTACK_N && !cpu_memory_read_ready),
++	.DTACKn(M68K_MBUS_DTACK_N && !cpu_memory_read_ready && !cpu_wram_write_ready),
+ 	.VPAn(~M68K_INTACK),
+ 	.BERRn(1),
+ 	.IPL0n(M68K_IPL_N[0]),
+@@ -871,6 +871,12 @@
+     (MBUS_A[23:20] < 4'ha || &MBUS_A[23:21]) &&
+     (mstate == MBUS_ROM_READ || mstate == MBUS_RAM_READ || mstate == MBUS_SRAM_READ) &&
+     MEM_REQ == MEM_ACK;
++// Work RAM may acknowledge as soon as the player owns the complete write.
++// CPU byte strobes have been sampled in SELECT after the S4 write phase.
++wire cpu_wram_write_ready = !reset && !M68K_AS_N && !MBUS_RNW &&
++    msrc == MSRC_M68K && (&MBUS_A[23:21]) && mstate == MBUS_RAM_READ &&
++    MEM_REQ == MEM_ACK;
++
+ 
+ 
+ 				
+@@ -911,6 +917,7 @@
+ 			if (cycle_cnt) cycle_cnt <= cycle_cnt - 1'd1;
+ 		end
+ 
++        if (cpu_wram_write_ready) M68K_MBUS_DTACK_N <= 0;
+         if (cpu_memory_read_ready) begin
+             M68K_MBUS_D <= MEM_DATA;
+             M68K_MBUS_DTACK_N <= 0;

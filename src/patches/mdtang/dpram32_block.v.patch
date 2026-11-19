@@ -1,0 +1,11 @@
+--- a/dpram32_block.v
++++ b/dpram32_block.v
+@@ -16,7 +16,7 @@
+     input       [3:0]   be_b
+ );
+ 
+-`ifndef VERILATOR
++`ifdef SYNTHESIS
+ // default to bypass read and normal write    
+ DPB #(
+     .BIT_WIDTH_0(16), .BIT_WIDTH_1(16)

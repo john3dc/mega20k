@@ -1,0 +1,33 @@
+--- a/vdp.vhd
++++ b/vdp.vhd
+@@ -736,23 +736,15 @@
+ );
+ BGA_COLINFO_WE_B <= '0';
+ 
+-obj_ci : entity work.DualPortRAM
+-generic map (
+-	addrbits        => 9,
+-	databits        => 7
+-)
++obj_ci : entity work.sprite_line
+ port map(
+-	address_a	=> OBJ_COLINFO_ADDR_A,
+-	address_b	=> OBJ_COLINFO_ADDR_B,
+-	clock		=> OBJ_COLINFO_CLK,
+-	data_a		=> (others => '0'),
+-	data_b		=> OBJ_COLINFO_D_B,
+-	wren_a		=> OBJ_COLINFO_WE_A,
+-	wren_b		=> OBJ_COLINFO_WE_B,
+-	q_a			=> OBJ_COLINFO_Q_A,
+-	q_b			=> open
++    clk     => CLK,
++    rd_addr => OBJ_COLINFO_ADDR_A,
++    wr_addr => OBJ_COLINFO_ADDR_B,
++    data    => OBJ_COLINFO_D_B,
++    wr_en   => OBJ_COLINFO_WE_B,
++    q       => OBJ_COLINFO_Q_A
+ );
+-OBJ_COLINFO_CLK <= not CLK;
+ OBJ_COLINFO_ADDR_A <= OBJ_COLINFO_ADDR_RD_SP3 when SP3C /= SP3C_DONE else OBJ_COLINFO_ADDR_RD_REND;
+ OBJ_COLINFO_ADDR_B <= OBJ_COLINFO_ADDR_WR_SP3 when SP3C /= SP3C_DONE else OBJ_COLINFO_ADDR_WR_REND;
+ OBJ_COLINFO_WE_A <= '0';

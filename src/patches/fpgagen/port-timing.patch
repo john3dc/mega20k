@@ -1,0 +1,224 @@
+--- a/vdp.vhd
++++ b/vdp.vhd
+@@ -279,6 +279,7 @@
+ 	DTC_CRAM_WR,
+ 	DTC_VSRAM_WR,
+ 	DTC_WR_END,
++	DTC_VRAM_RD_SLOT,
+ 	DTC_VRAM_RD1,
+ 	DTC_VRAM_RD2,
+ 	DTC_CRAM_RD,
+@@ -328,8 +329,16 @@
+ 
+ signal DT_RD_DATA	: std_logic_vector(15 downto 0);
+ signal DT_RD_CODE	: std_logic_vector(3 downto 0);
+-signal DT_RD_SEL	: std_logic;
+-signal DT_RD_DTACK_N	: std_logic;
++signal RD_PREFETCH_EN	: std_logic;
++-- A read command fills one word ahead of the CPU. Delay is measured in
++-- two-pixel slots in both H32 and H40, including slots used for display.
++signal RD_DELAY : std_logic_vector(1 downto 0);
++signal RD_BUS_RELEASE : std_logic;
++-- Remember which half of the two-pixel slot accepted the refill.
++signal RD_ADDRESS_LATE : std_logic;
++signal RD_WAIT_RELEASE : std_logic;
++signal RD_REQUEST_VALID : std_logic;
++signal RD_BUFFER_EMPTY	: std_logic;
+ 
+ signal ADDR			: std_logic_vector(16 downto 0);
+ 
+@@ -2918,6 +2927,14 @@
+ VBUS_ADDR <= FF_VBUS_ADDR;
+ VBUS_SEL <= FF_VBUS_SEL;
+ 
++-- Synchronize the end of a CPU access before starting the next prefetch.
++process(CLK)
++begin
++	if rising_edge(CLK) then
++		RD_BUS_RELEASE <= AS_N or not BGACK_N_REG;
++	end if;
++end process;
++
+ FIFO_EMPTY <= '1' when FIFO_QUEUE = 0 and FIFO_PARTIAL = '0' else '0';
+ FIFO_FULL <= '1' when (FIFO_QUEUE(2) = '1') or (FIFO_QUEUE = 3 and FIFO_PARTIAL = '1') else '0';
+ 
+@@ -2928,6 +2945,7 @@
+ -- synthesis translate_on
+ variable fifo_inc : std_logic;
+ variable fifo_dec : std_logic;
++variable invalidate_read : boolean;
+ begin
+ 	if RST_N = '0' then
+ 
+@@ -2937,8 +2955,12 @@
+ 		PENDING <= '0';
+ 		CODE <= (others => '0');
+ 
+-		DT_RD_SEL <= '0';
+-		DT_RD_DTACK_N <= '1';
++		RD_PREFETCH_EN <= '0';
++		RD_DELAY <= "00";
++		RD_WAIT_RELEASE <= '0';
++		RD_ADDRESS_LATE <= '0';
++		RD_REQUEST_VALID <= '0';
++		RD_BUFFER_EMPTY <= '1';
+ 
+ 		SOVR_CLR <= '0';
+ 		SCOL_CLR <= '0';
+@@ -2979,8 +3001,30 @@
+ 		fifo_inc := '0';
+ 		fifo_dec := '0';
+ 
+-		if DT_RD_SEL = '0' then
+-			DT_RD_DTACK_N <= '1';
++		invalidate_read := SEL = '1' and FF_DTACK_N = '1' and RNW = '0' and
++		                   (A(4 downto 2) = "001" or (A(4 downto 2) = "000" and FIFO_FULL = '0'));
++		if invalidate_read then
++			RD_WAIT_RELEASE <= '0';
++			RD_PREFETCH_EN <= '0';
++			RD_BUFFER_EMPTY <= '1';
++			RD_REQUEST_VALID <= '0';
++			RD_DELAY <= "11";
++		elsif RD_WAIT_RELEASE = '1' then
++			if RD_BUS_RELEASE = '1' then
++				-- Sample the request at the address latch phase of the first
++				-- pixel. A slot contains two pixels and four half-pixel phases.
++				if HV_HCNT(0) = '0' and ((H40 = '1' and HV_PIXDIV < 4) or
++				   (H40 = '0' and HV_PIXDIV < 5)) then
++					RD_ADDRESS_LATE <= '0';
++				else
++					RD_ADDRESS_LATE <= '1';
++				end if;
++				RD_WAIT_RELEASE <= '0';
++			end if;
++		elsif SLOT_EN = '1' and RD_DELAY /= 0 and (RD_DELAY /= 1 or REFRESH_EN = '0' or RD_ADDRESS_LATE = '0') then
++			-- An address already set up in the first pixel can cross a refresh.
++			-- A late address waits for the next available setup phase.
++			RD_DELAY <= RD_DELAY - 1;
+ 		end if;
+ 
+ 		if SLOT_EN = '1' then
+@@ -3020,6 +3064,10 @@
+ 					-- Control Port
+ 					if PENDING = '1' then
+ 						CODE(4 downto 2) <= DI(6 downto 4);
++						if CODE(1 downto 0) = "00" and DI(6) = '0' and
++						   (DMA = '0' or DI(7) = '0') then
++							RD_PREFETCH_EN <= '1';
++						end if;
+ 						ADDR <= DI(2 downto 0) & ADDR(13 downto 0);
+ 
+ 						if DMA = '1' then
+@@ -3076,11 +3124,12 @@
+ 					or CODE = "000000" -- VRAM Read
+ 					or CODE = "001100" -- VRAM Read 8 bit
+ 					then
+-						if DT_RD_DTACK_N = '1' then
+-							DT_RD_SEL <= '1';
+-							DT_RD_CODE <= CODE(3 downto 0);
++						if RD_BUFFER_EMPTY = '1' then
++							RD_PREFETCH_EN <= '1';
+ 						else
+-							DT_RD_SEL <= '0';
++							RD_BUFFER_EMPTY <= '1';
++							RD_WAIT_RELEASE <= '1';
++							RD_DELAY <= "10";
+ 							FF_DO <= DT_RD_DATA;
+ 							FF_DTACK_N <= '0';
+ 						end if;
+@@ -3124,13 +3173,18 @@
+ 				if VRAM_SPEED = '0' or (FIFO_EN = '1' and FIFO_PARTIAL = '0' and REFRESH_FLAG = '0') then
+ 					if FIFO_EMPTY = '0' and FIFO_DELAY( CONV_INTEGER( FIFO_RD_POS ) ) = 0 then
+ 						DTC <= DTC_FIFO_RD;
+-					elsif DT_RD_SEL = '1' and DT_RD_DTACK_N = '1' then
+-						case DT_RD_CODE is
++					elsif RD_PREFETCH_EN = '1' and RD_BUFFER_EMPTY = '1' and RD_DELAY = 0 and RD_WAIT_RELEASE = '0' and not invalidate_read then
++						RD_REQUEST_VALID <= '1';
++						DT_RD_CODE <= CODE(3 downto 0);
++						case CODE(3 downto 0) is
+ 						when "1000" => -- CRAM Read
+ 							DTC <= DTC_CRAM_RD;
+ 						when "0100" => -- VSRAM Read
+ 							DTC <= DTC_VSRAM_RD;
+-						when others => -- VRAM Read
++						when "0000" => -- 64 KiB VRAM has an eight-bit data bus
++							if M128 = '0' then DTC <= DTC_VRAM_RD_SLOT;
++							else DTC <= DTC_VRAM_RD1; end if;
++						when others => -- eight-bit VRAM read
+ 							DTC <= DTC_VRAM_RD1;
+ 						end case;
+ 					end if;
+@@ -3141,16 +3195,16 @@
+ 				DT_WR_DATA <= FIFO_DATA( CONV_INTEGER( FIFO_RD_POS ) );
+ 				FIFO_RD_POS <= FIFO_RD_POS + 1;
+ 				fifo_dec := '1';
++				-- CD3 does not change the number of byte slots on the VRAM bus.
++				if FIFO_CODE(CONV_INTEGER(FIFO_RD_POS))(2 downto 0) = "001" and M128 = '0' then
++					FIFO_PARTIAL <= '1';
++				end if;
+ 				case FIFO_CODE( CONV_INTEGER( FIFO_RD_POS ) ) is
+ 				when "0011" => -- CRAM Write
+ 					DTC <= DTC_CRAM_WR;
+ 				when "0101" => -- VSRAM Write
+ 					DTC <= DTC_VSRAM_WR;
+ 				when "0001" => -- VRAM Write
+-					if M128 = '0' then
+-						--skip next FIFO slot since we write 16 bit now instead of the original 8
+-						FIFO_PARTIAL <= '1';
+-					end if;
+ 					DTC <= DTC_VRAM_WR1;
+ 				when others => --invalid target
+ 					DTC <= DTC_WR_END;
+@@ -3230,6 +3284,13 @@
+ 					DMAF_SET_REQ <= '1';
+ 				end if;
+ 				DTC <= DTC_IDLE;
++
++			when DTC_VRAM_RD_SLOT =>
++				if RD_REQUEST_VALID = '0' or invalidate_read then
++					DTC <= DTC_IDLE;
++				elsif FIFO_EN = '1' or VRAM_SPEED = '0' then
++					DTC <= DTC_VRAM_RD1;
++				end if;
+ 
+ 			when DTC_VRAM_RD1 =>
+ 				DT_VRAM_SEL <= not DT_VRAM_SEL;
+@@ -3251,8 +3312,10 @@
+ 					else
+ 						DT_RD_DATA <= DT_VRAM_DO;
+ 					end if;
+-					DT_RD_DTACK_N <= '0';
+-					ADDR <= ADDR + ADDR_STEP;
++					if RD_REQUEST_VALID = '1' and not invalidate_read then
++						RD_BUFFER_EMPTY <= '0';
++						ADDR <= ADDR + ADDR_STEP;
++					end if;
+ 					DTC <= DTC_IDLE;
+ 				end if;
+ 
+@@ -3273,8 +3336,10 @@
+ 				DT_RD_DATA(8) <= FIFO_DATA( CONV_INTEGER( FIFO_RD_POS ) )(8);
+ 				DT_RD_DATA(4) <= FIFO_DATA( CONV_INTEGER( FIFO_RD_POS ) )(4);
+ 				DT_RD_DATA(0) <= FIFO_DATA( CONV_INTEGER( FIFO_RD_POS ) )(0);
+-				DT_RD_DTACK_N <= '0';
+-				ADDR <= ADDR + ADDR_STEP;	
++				if RD_REQUEST_VALID = '1' and not invalidate_read then
++					RD_BUFFER_EMPTY <= '0';
++					ADDR <= ADDR + ADDR_STEP;
++				end if;
+ 				DTC <= DTC_IDLE;
+ 
+ 			when DTC_VSRAM_RD =>
+@@ -3297,8 +3362,10 @@
+ 				else
+ 					DT_RD_DATA <= FIFO_DATA( CONV_INTEGER( FIFO_RD_POS ) )(15 downto 11) & BGB_VSRAM1_LATCH;
+ 				end if;
+-				DT_RD_DTACK_N <= '0';
+-				ADDR <= ADDR + ADDR_STEP;	
++				if RD_REQUEST_VALID = '1' and not invalidate_read then
++					RD_BUFFER_EMPTY <= '0';
++					ADDR <= ADDR + ADDR_STEP;
++				end if;
+ 				DTC <= DTC_IDLE;
+ 
+ 			when others => null;
